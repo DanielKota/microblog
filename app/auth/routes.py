@@ -1,11 +1,11 @@
 from flask import render_template, redirect, url_for, flash, request
 from urllib.parse import urlsplit
-from flask_login import login_user, logout_user, current_user
+from flask_login import login_user, logout_user, current_user, login_required
 from flask_babel import _
 import sqlalchemy as sa
 from app import db
 from app.auth import bp
-from app.auth.forms import LoginForm
+from app.auth.forms import LoginForm, ChangePasswordForm
 from app.models import User
 
 
@@ -32,3 +32,17 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('main.index'))
+
+@bp.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        if not current_user.check_password(form.old_password.data):
+            flash(_('Invalid old password'))
+            return redirect(url_for('auth.change_password'))
+        current_user.set_password(form.new_password.data)
+        db.session.commit()
+        flash(_('Your password has been changed.'))
+        return redirect(url_for('auth.change_password'))
+    return render_template('auth/change_password.html', title=_('Change Password'), form=form)
