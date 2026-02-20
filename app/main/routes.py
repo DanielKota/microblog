@@ -6,7 +6,7 @@ from flask_babel import _, get_locale
 import sqlalchemy as sa
 from langdetect import detect, LangDetectException
 from app import db
-from app.main.forms import EditProfileForm, EmptyForm, PostForm
+from app.main.forms import EditPostForm, EditProfileForm, EmptyForm, PostForm
 from app.models import User, Post
 from app.translate import translate
 from app.main import bp
@@ -143,10 +143,37 @@ def unfollow(username):
         return redirect(url_for('main.index'))
 
 
-@bp.route('/translate', methods=['POST'])
+@bp.route('/edit_post/<id>', methods=['GET', 'POST'])
 @login_required
-def translate_text():
-    data = request.get_json()
-    return {'text': translate(data['text'],
-                              data['source_language'],
-                              data['dest_language'])}
+def edit_post(id):
+    post = db.session.scalar(sa.select(Post).where(Post.id == id))
+    if post is None:
+        flash(_('Post not found.'))
+        return redirect(url_for('main.index'))
+    if post.author != current_user:
+        flash(_('You are not authorized to edit this post.'))
+        return redirect(url_for('main.index'))
+    form = EditPostForm()
+    if form.validate_on_submit():
+        post.body = form.post.data
+        db.session.commit()
+        flash(_('Your changes have been saved.'))
+        return redirect(url_for('main.user', username=current_user.username))
+    elif request.method == 'GET':
+        form.post.data = post.body
+    return render_template('edit_post.html', title=_('Edit Post'), form=form, post=post)
+
+@bp.route('/delete_post/<id>', methods=['POST'])
+@login_required
+def delete_post(id):
+    post = db.session.scalar(sa.select(Post).where(Post.id == id))
+    if post is None:
+        flash(_('Post not found.'))
+        return redirect(url_for('main.index'))
+    if post.author != current_user:
+        flash(_('You are not authorized to delete this post.'))
+        return redirect(url_for('main.index'))
+    db.session.delete(post)
+    db.session.commit()
+    flash(_('The post has been deleted.'))
+    return redirect(url_for('main.index'))

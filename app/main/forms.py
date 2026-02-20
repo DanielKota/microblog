@@ -33,3 +33,8 @@ class PostForm(FlaskForm):
     post = TextAreaField(_l('Say something'), validators=[
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField(_l('Submit'))
+
+class EditPostForm(FlaskForm):
+    post = TextAreaField(_l('Edit your post'), validators=[
+        DataRequired(), Length(min=1, max=140)])
+    submit = SubmitField(_l('Save Changes'))
